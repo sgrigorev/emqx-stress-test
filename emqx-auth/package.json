@@ -1,0 +1,17 @@
+{
+  "name": "rmqauth",
+  "version": "2.0.1",
+  "description": "Rabbit MQ Authentication Provider",
+  "main": "index.js",
+  "author": "SG",
+  "dependencies": {
+    "express": "^4.17.1",
+    "express-winston": "^4.0.5",
+    "winston": "^3.3.3"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": []
+}

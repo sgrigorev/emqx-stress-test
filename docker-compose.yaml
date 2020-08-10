@@ -1,0 +1,70 @@
+version: '3'
+
+services:
+  rabbitmq:
+    container_name: rabbitmq-stress-test
+    image: rabbitmq:3.8.5
+    hostname: "rabbitmq"
+    volumes:
+      - "./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf"
+      - "./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins"
+      - "./rabbitmq/data/:/var/lib/rabbitmq/mnesia"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+      - "1883:1883"
+
+  emqxauth:
+    build:
+      context: ./emqx-auth/
+    image: emqx-auth:latest
+    network_mode: "host"
+    environment:
+      - "LOG_LEVEL=debug"
+    container_name: emqxauth
+
+  # do not forget to create the "cloudnodes" exchange before starting mosquitto
+  mosquitto:
+    build:
+      context: ./mosquitto
+    image: mosquitto-stress-test:latest
+    container_name: mosquitto-stress-test
+    network_mode: "host"
+    environment:
+     - "START_MOSQUITTO_INDEX=1"
+     - "END_MOSQUITTO_INDEX=100"
+     - "RMQ_HOST=127.0.0.1"
+     - "MIN_MSG_SEND_DELAY_MS=2"
+     - "MAX_MSG_SEND_DELAY_MS=100"
+
+  emqx:
+    image: emqx/emqx:v4.1.2
+    container_name: emqx-stress-test
+    network_mode: "host"
+    depends_on:
+      - emqxauth
+      - rabbitmq
+    ports:
+      - "8883:8883"
+      - "18083:18083"
+    environment:
+      - "EMQX_LOG__LEVEL=info"
+      - "EMQX_LOG__TO=console"
+      - "EMQX_LISTENER__SSL__EXTERNAL=8883"
+      - "EMQX_LISTENER__TCP__EXTERNAL=1884"
+      - "EMQX_ALLOW__ANONYMOUS=false"
+      - "EMQX_ACL__CACHE__TTL=30m"
+      - "EMQX_LISTENER__SSL__EXTERNAL__VERIFY=verify_peer"
+      - "EMQX_LISTENER__SSL__EXTERNAL__KEYFILE=/etc/ssl/emqx/server.key"
+      - "EMQX_LISTENER__SSL__EXTERNAL__CERTFILE=/etc/ssl/emqx/server.crt"
+      - "EMQX_LISTENER__SSL__EXTERNAL__CACERTFILE=/etc/ssl/emqx/CA.crt"
+      - "EMQX_LOADED_PLUGINS=emqx_recon,emqx_retainer,emqx_management,emqx_dashboard,emqx_bridge_mqtt,emqx_auth_http"
+    volumes:
+      - "./ssl-certificates/:/etc/ssl/emqx/"
+      - "./emqx/emqx_bridge_mqtt.conf:/opt/emqx/etc/plugins/emqx_bridge_mqtt.conf"
+      - "./emqx/emqx_auth_http.conf:/opt/emqx/etc/plugins/emqx_auth_http.conf"
+
+networks:
+  default:
+    external:
+      name: rmq-stress-test
